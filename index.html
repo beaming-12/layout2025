@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>戰情室 - 最終完美佈局</title>
+    <style>
+        :root { 
+            --hud-bg: rgba(10, 15, 30, 0.95); 
+            --neon-blue: #00f7ff; 
+            --neon-purple: #bc13fe;
+            --neon-gold: #ffaa00;
+        }
+        body, html { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #020205; color: #fff; }
+        
+        #three-canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        
+        #ui-layer {
+            position: absolute; top: 30px; left: 30px; z-index: 10;
+            width: 360px; pointer-events: none;
+        }
+        
+        .hud-panel {
+            background: var(--hud-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            pointer-events: auto;
+        }
+        
+        .hud-title {
+            margin: 0 0 20px 0; font-size: 1.2rem; letter-spacing: 3px; font-weight: 800;
+            color: #fff; text-transform: uppercase;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .hud-title::after { content: ''; display: block; width: 10px; height: 10px; background: var(--neon-blue); border-radius: 50%; box-shadow: 0 0 10px var(--neon-blue); }
+
+        .input-wrapper { position: relative; margin-bottom: 20px; }
+        
+        input {
+            width: 100%; background: #1a1f2e; border: 1px solid #333;
+            color: #fff; padding: 15px; font-size: 1rem; outline: none; transition: 0.3s;
+            box-sizing: border-box; border-radius: 4px;
+        }
+        input:focus { border-color: var(--neon-blue); background: #23293d; }
+
+        button {
+            position: absolute; right: 5px; top: 5px; bottom: 5px;
+            background: var(--neon-blue); color: #000; border: none;
+            padding: 0 20px; font-weight: bold; cursor: pointer; transition: 0.3s;
+            border-radius: 3px;
+        }
+        button:hover { background: #fff; }
+
+        .result-card {
+            margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--neon-gold); border-radius: 0 4px 4px 0;
+        }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
+        .info-val { color: #fff; font-weight: 600; }
+        .big-seat-num { font-size: 2.2rem; color: var(--neon-gold); font-weight: 800; }
+        
+        /* 載入光條 */
+        .loader-bar { height: 2px; width: 0%; background: var(--neon-blue); transition: width 0.3s; position: absolute; bottom: 0; left: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="three-canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="hud-panel">
+            <h2 class="hud-title">SEAT NAV OS</h2>
+            <div class="input-wrapper">
+                <input type="text" id="employeeName" placeholder="輸入姓名查詢..." onkeydown="if(event.key==='Enter') queryDeskLocation()">
+                <button onclick="queryDeskLocation()">SEARCH</button>
+                <div class="loader-bar" id="loader"></div>
+            </div>
+            <div id="status-msg" style="font-size: 0.85rem; color: #666;">SYSTEM READY</div>
+            <div id="result-area" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+
+    <script>
+        // 🚨 請確認您的 GAS URL
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxQuKFadSahEF-BeKW1LVtHIMBLwPpK7RevNTMtnLHpFgT4a-L60O8j1fFCg98NHb4/exec';
+
+        let scene, camera, renderer, controls;
+        let tableGroups = {}; 
+        
+        // --- 佈局參數 ---
+        const COLS_PER_SIDE = 7; 
+        const ROWS_BOTTOM = 8;   
+        const ROWS_TOP = 9;      
+        const TOTAL_ROWS = 17; 
+        const TOTAL_COLS = 14;      
+
+        const SPACING_X = 5.5;  
+        const SPACING_Z = 5.5;  
+        const AISLE_GAP_X = 6;  
+        const AISLE_GAP_Z = 6;  
+
+        // 視覺升級參數
+        const TABLE_RADIUS = 1.6;
+        const INNER_TABLE_RADIUS = 0.8; // 轉盤半徑
+
+        window.onload = init;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020205);
+            scene.fog = new THREE.Fog(0x020205, 50, 250);
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 110, 100); 
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; // 開啟陰影
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('three-canvas-container').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1;
+
+            // 燈光系統
+            const ambient = new THREE.AmbientLight(0x333333);
+            scene.add(ambient);
+
+            // 主光源 (產生陰影)
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            // 裝飾光 (增加質感)
+            const spotLight = new THREE.SpotLight(0x00f7ff, 0.5);
+            spotLight.position.set(0, 100, 0);
+            spotLight.angle = Math.PI / 4;
+            scene.add(spotLight);
+            
+            // 地板
+            const grid = new THREE.GridHelper(300, 60, 0x333333, 0x111111);
+            scene.add(grid);
+
+            // 生成佈局
+            generateLayout();
+
+            window.addEventListener('resize', onResize);
+            animate();
+        }
+
+        // --- 核心佈局邏輯 (包含跳號機制) ---
+        function generateLayout() {
+            const loader = new THREE.FontLoader();
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                
+                let tableCounter = 1; // 當前的桌號
+                let positionCounter = 1; // 當前的「位置」序號 (用來判斷第222個位置)
+
+                // 逐行生成
+                for (let c = 0; c < TOTAL_COLS; c++) {
+                    
+                    const isGoingUp = (c % 2 === 0);
+                    let columnPositions = [];
+
+                    for (let r = 0; r < TOTAL_ROWS; r++) {
+                        // 計算 X
+                        let xPos = (c - (TOTAL_COLS / 2) + 0.5) * SPACING_X;
+                        if (c >= COLS_PER_SIDE) xPos += AISLE_GAP_X / 2;
+                        else xPos -= AISLE_GAP_X / 2;
+
+                        // 計算 Z
+                        let zPos = ((TOTAL_ROWS / 2) - 0.5 - r) * SPACING_Z;
+                        if (r >= ROWS_BOTTOM) zPos -= AISLE_GAP_Z / 2;
+                        else zPos += AISLE_GAP_Z / 2;
+
+                        columnPositions.push({x: xPos, z: zPos});
+                    }
+
+                    // 蛇行反轉
+                    if (!isGoingUp) columnPositions.reverse();
+
+                    // 依序放置桌子
+                    columnPositions.forEach(pos => {
+                        
+                        // 🚨 特殊邏輯：位置 222 (在第一象限某處) 要留空
+                        // 我們用 positionCounter 來追蹤「物理位置」
+                        // 用 tableCounter 來追蹤「桌號」
+                        
+                        if (positionCounter === 222) {
+                            // 什麼都不做，跳過生成，桌號也不加
+                            console.log("Skipping position 222 (Empty Space)");
+                        } else {
+                            // 正常生成桌子
+                            createFancyTableGroup(tableCounter, pos.x, pos.z, font);
+                            tableCounter++; // 只有生成了桌子，桌號才+1
+                        }
+
+                        positionCounter++; // 物理位置永遠+1
+                    });
+                }
+                
+                console.log(`Total tables generated: ${tableCounter - 1}`); // 應該是 237
+            });
+        }
+
+        // --- 視覺升級：高級桌椅模型 ---
+        function createFancyTableGroup(id, x, z, font) {
+            const group = new THREE.Group();
+            group.position.set(x, 0, z);
+
+            // 1. 主桌布 (紅色絲絨質感)
+            const tableGeo = new THREE.CylinderGeometry(TABLE_RADIUS, TABLE_RADIUS, 0.2, 64);
+            const tableMat = new THREE.MeshStandardMaterial({ 
+                color: 0xcd5c5c, // 深紅色桌布 (改成indian red)
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const table = new THREE.Mesh(tableGeo, tableMat);
+            table.position.y = 0.8; // 桌腳高度
+            table.castShadow = true;
+            table.receiveShadow = true;
+            group.add(table);
+
+            // 2. 玻璃轉盤 (Inner Lazy Susan)
+            const susanGeo = new THREE.CylinderGeometry(INNER_TABLE_RADIUS, INNER_TABLE_RADIUS, 0.05, 32);
+            const susanMat = new THREE.MeshPhysicalMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.4,
+                roughness: 0.1,
+                transmission: 0.8 // 玻璃質感
+            });
+            const susan = new THREE.Mesh(susanGeo, susanMat);
+            susan.position.y = 0.95;
+            group.add(susan);
+
+            // 3. 懸浮科技桌號
+            const textGeo = new THREE.TextGeometry(String(id), {
+                font: font, size: 0.8, height: 0.1
+            });
+            textGeo.center();
+            const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const textMesh = new THREE.Mesh(textGeo, textMat);
+            textMesh.position.y = 2.5;
+            textMesh.rotation.x = -Math.PI / 2; // 躺平朝上
+            group.add(textMesh);
+
+            // 4. 生成 10 張有靠背的椅子
+            const seats = [];
+            for (let i = 0; i < 10; i++) {
+                const angle = (i / 10) * Math.PI * 2;
+                const dist = 2.2;
+                
+                const seatGroup = new THREE.Group();
+                const sx = Math.cos(angle) * dist;
+                const sz = Math.sin(angle) * dist;
+                seatGroup.position.set(sx, 0, sz);
+                seatGroup.rotation.y = -angle + Math.PI/2; // 面向桌子
+
+                // 椅墊
+                const cushionGeo = new THREE.BoxGeometry(0.6, 0.1, 0.6);
+                const cushionMat = new THREE.MeshStandardMaterial({ color: 0xcccccc }); // 灰色椅墊
+                const cushion = new THREE.Mesh(cushionGeo, cushionMat);
+                cushion.position.y = 0.5;
+                cushion.castShadow = true;
+                seatGroup.add(cushion);
+
+                // 椅背
+                const backGeo = new THREE.BoxGeometry(0.6, 0.6, 0.05);
+                const back = new THREE.Mesh(backGeo, cushionMat);
+                back.position.set(0, 0.8, 0.28); // 稍微往後
+                back.castShadow = true;
+                seatGroup.add(back);
+
+                // 綁定資料
+                // 我們綁定在 seatGroup 上，之後高亮時改變 cushion 的顏色
+                seatGroup.userData = { 
+                    parentId: id, 
+                    seatNum: i + 1, 
+                    cushionMesh: cushion, // 存起來方便改色
+                    backMesh: back
+                };
+
+                group.add(seatGroup);
+                seats.push(seatGroup);
+            }
+
+            // 儲存參照
+            tableGroups[String(id)] = {
+                group: group,
+                seats: seats,
+                text: textMesh,
+                tableMesh: table
+            };
+
+            scene.add(group);
+        }
+
+        async function queryDeskLocation() {
+            const input = document.getElementById('employeeName');
+            const status = document.getElementById('status-msg');
+            const loader = document.getElementById('loader');
+            const resultArea = document.getElementById('result-area');
+            
+            const name = input.value.trim();
+            if(!name) return;
+
+            status.innerText = "SEARCHING DATABASE...";
+            loader.style.width = "100%";
+            resetHighlights();
+            resultArea.style.display = 'none';
+
+            try {
+                const res = await fetch(`${GAS_API_URL}?name=${encodeURIComponent(name)}`);
+                const data = await res.json();
+
+                loader.style.width = "0%";
+
+                if(!data.success || data.count === 0) {
+                    status.innerText = "NO RECORD FOUND / 查無此人";
+                    return;
+                }
+
+                status.innerText = `RESULT FOUND: ${data.count}`;
+                resultArea.style.display = 'block';
+                resultArea.innerHTML = '';
+
+                data.data.forEach((emp, idx) => {
+                    const deskStr = String(emp.Desk).trim(); 
+                    const parts = deskStr.split('-'); 
+
+                    let bigTableId = parts[0];
+                    let seatNum = parts.length > 1 ? parseInt(parts[1]) : null;
+
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    card.innerHTML = `
+                        <div class="info-row"><span>NAME</span><span class="info-val">${emp.Name}</span></div>
+                        <div class="info-row"><span>DEPT</span><span class="info-val">${emp.Dept}</span></div>
+                        <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px; text-align:right;">
+                            <div class="big-seat-num">${deskStr}</div>
+                        </div>
+                    `;
+                    resultArea.appendChild(card);
+
+                    const target = tableGroups[bigTableId];
+                    if(target) {
+                        // 高亮桌號
+                        target.text.material.color.setHex(0xffaa00);
+                        target.text.scale.set(2, 2, 2);
+                        
+                        // 高亮桌布 (變成亮一點的紅色)
+                        target.tableMesh.material.emissive.setHex(0x330000);
+
+                        // 高亮椅子
+                        if(seatNum && seatNum >= 1 && seatNum <= 10) {
+                            const seatObj = target.seats[seatNum - 1];
+                            if(seatObj) {
+                                // 椅子變亮粉紅
+                                seatObj.userData.cushionMesh.material.color.setHex(0xff0055);
+                                seatObj.userData.cushionMesh.material.emissive.setHex(0x440022);
+                                seatObj.userData.backMesh.material.color.setHex(0xff0055);
+                            }
+                        } else {
+                            // 整桌椅子變色
+                            target.seats.forEach(s => {
+                                s.userData.cushionMesh.material.color.setHex(0xffaa00);
+                            });
+                        }
+
+                        if(idx === 0) flyTo(target.group.position);
+                    }
+                });
+
+            } catch(e) {
+                console.error(e);
+                status.innerText = "CONNECTION ERROR";
+                loader.style.width = "0%";
+            }
+        }
+
+        function resetHighlights() {
+            for(let id in tableGroups) {
+                const t = tableGroups[id];
+                // 恢復文字
+                t.text.material.color.setHex(0xffffff);
+                t.text.scale.set(1, 1, 1);
+                // 恢復桌布無自發光
+                t.tableMesh.material.emissive.setHex(0x000000);
+                
+                // 恢復椅子灰色
+                t.seats.forEach(s => {
+                    s.userData.cushionMesh.material.color.setHex(0xcccccc);
+                    s.userData.cushionMesh.material.emissive.setHex(0x000000);
+                    s.userData.backMesh.material.color.setHex(0xcccccc);
+                });
+            }
+        }
+
+        function flyTo(pos) {
+            const targetPos = { x: pos.x, y: 30, z: pos.z + 15 }; 
+            
+            new TWEEN.Tween(camera.position).to(targetPos, 1200)
+                .easing(TWEEN.Easing.Cubic.Out).start();
+                
+            new TWEEN.Tween(controls.target).to({x: pos.x, y: 0, z: pos.z}, 1200)
+                .easing(TWEEN.Easing.Cubic.Out).start();
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            TWEEN.update();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
