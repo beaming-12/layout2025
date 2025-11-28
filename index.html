@@ -117,23 +117,50 @@
             font-size: 1.2rem; transition: 0.3s;
         }
         .close-btn:hover { color: #fff; border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
- 
+  
         .main-title {
             position: relative;
-            font-size: 2rem;
+            font-size: 1.6rem;           /* 縮小一點，避免在手機換行 */
             font-weight: 800;
             letter-spacing: 3px;
             text-align: center;
             margin-bottom: 6px;
-            background: linear-gradient(120deg, #ffffff 0%, #ffe9a3 40%, #00f3ff 100%);
-            -webkit-background-clip: text;
-            color: transparent;
+            color: #ffffff;
+            /* 多層陰影做立體感（壓出來的字） */
             text-shadow:
-                0 0 10px rgba(0, 0, 0, 0.5),
-                0 0 18px rgba(0, 243, 255, 0.6);
+                0 1px 0 #e0e0e0,
+                0 2px 0 #c8c8c8,
+                0 3px 0 #a0a0a0,
+                0 4px 3px rgba(0, 0, 0, 0.7),
+                0 0 10px rgba(0, 243, 255, 0.5);
+            overflow: hidden;            /* 才能限制掃描光只在字的範圍 */
         }
         
-        /* 底下加一條光條 */
+        /* 只在這八個字上跑的掃描光 */
+        .main-title::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -30%;
+            width: 30%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0.8),
+                rgba(255,255,255,0)
+            );
+            mix-blend-mode: screen;
+            pointer-events: none;
+            animation: title-scan 2.8s linear infinite;
+        }
+        
+        @keyframes title-scan {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(400%); }
+        }
+        
+        /* 底線變「流光跑馬」效果 */
         .main-title::after {
             content: '';
             position: absolute;
@@ -142,9 +169,32 @@
             transform: translateX(-50%);
             width: 80%;
             height: 2px;
-            background: linear-gradient(90deg, transparent, rgba(0,243,255,0.8), transparent);
-            box-shadow: 0 0 8px rgba(0,243,255,0.8);
+            background: linear-gradient(
+                90deg,
+                rgba(0,243,255,0),
+                rgba(0,243,255,0.9),
+                rgba(255,255,255,0.9),
+                rgba(0,243,255,0.9),
+                rgba(0,243,255,0)
+            );
+            background-size: 200% 100%;
+            box-shadow: 0 0 10px rgba(0,243,255,0.8);
+            animation: underline-flow 3s linear infinite;
         }
+        
+        @keyframes underline-flow {
+            0%   { background-position: 0 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* 手機再小一點時再縮一點字體 */
+        @media (max-width: 400px) {
+            .main-title {
+                font-size: 1.4rem;
+                letter-spacing: 2px;
+            }
+        }
+
 
         .sub-title { font-size: 1rem; color: #ccc; letter-spacing: 1px; }
         .tagline {
@@ -377,6 +427,7 @@
         const SPACING_X = 7; 
         const SPACING_Z = 7;  
         const AISLE_GAP = 12;
+        let currentRouteTableId = null;
         let navigatorMesh = null; 
         const PATH_WITH_RUNNER = true;
         window.onload = init;
@@ -456,7 +507,9 @@
                         if ((c*ROWS + positions.indexOf(pos) + 1) === 222) return; 
                         createHexTable(counter, pos.x, pos.z, font);
                         if (counter === 226) {
-                            entrancePos.set(pos.x + 30, 0, pos.z + 10);
+                            const dx = SPACING_X;   // 7
+                            const dz = SPACING_Z;   // 7
+                            entrancePos.set(pos.x + dx, 0, pos.z + dz);
                             createEntrance(entrancePos, font);
                         }
                         counter++;
@@ -685,25 +738,40 @@
             highlight3D(tableId, seatNum);
         }
 
-        // === 視覺特效 ===
+        // === 視覺特效 === 
         function highlight3D(tableId, seatNum) {
             resetHighlights();
-            const target = tableGroups[tableId];
-            if(target) {
+        
+            const idStr = String(tableId);
+            const target = tableGroups[idStr];
+            if (!target) return;
+        
+            const isRouteTarget = (currentRouteTableId && idStr === String(currentRouteTableId));
+        
+            // 導航中的桌：金色＋更大
+            if (isRouteTarget) {
                 target.top.material.color.setHex(0xffaa00);
-                target.text.material.color.setHex(0xffffff);
-                target.text.scale.set(2.5, 2.5, 2.5);
                 target.ring.material.color.setHex(0xffaa00);
-
-                if(seatNum) {
-                    const idx = parseInt(seatNum) - 1;
-                    if(target.seats[idx]) {
-                        target.seats[idx].back.material.emissive.setHex(0xff0055);
-                        target.seats[idx].back.material.emissiveIntensity = 2;
-                    }
+                target.text.material.color.setHex(0xffffff);
+                target.text.scale.set(2.6, 2.6, 2.6);
+            } else {
+                // 預覽用的高亮：偏藍色、比較低調
+                target.top.material.color.setHex(0x0066aa);
+                target.ring.material.color.setHex(0x00f3ff);
+                target.text.material.color.setHex(0xffffff);
+                target.text.scale.set(1.8, 1.8, 1.8);
+            }
+        
+            // 特定座位高亮（不分是不是導航桌）
+            if (seatNum) {
+                const idx = parseInt(seatNum, 10) - 1;
+                if (target.seats[idx]) {
+                    target.seats[idx].back.material.emissive.setHex(0xff0055);
+                    target.seats[idx].back.material.emissiveIntensity = 2;
                 }
             }
         }
+
 
         function resetHighlights() {
             Object.values(tableGroups).forEach(t => {
@@ -732,7 +800,8 @@
         const target = tableGroups[tableId];
         if(!target) return;
     
-        // 重新導航前，把舊的路線與光球清除
+        currentRouteTableId = String(tableId);
+            
         if(particlesMesh) {
             scene.remove(particlesMesh);
             particlesMesh = null;
@@ -805,59 +874,61 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
         }
-
+ 
         function animate() {
             requestAnimationFrame(animate);
             TWEEN.update();
             controls.update();
-
+        
             Object.values(tableGroups).forEach(t => {
                 t.text.lookAt(camera.position);
                 t.ring.rotation.z += 0.01;
             });
- 
-            if(particlesMesh) {
+        
+            // ✅ 粒子路徑：頭部亮，後面暗
+            if (particlesMesh) {
                 const colors = particlesMesh.geometry.attributes.color.array;
                 const count = particlesMesh.userData.count;
                 const time = Date.now() * 0.001;
-            
-                // headT = 光球目前位置（0~1），trail = 亮的尾巴長度
-                const headT = (time * 0.12) % 1;  // 調整 0.12 可以改速度
-                const trail = 0.18;               // 0.1~0.25 可以試
-            
+        
+                const headT = (time * 0.12) % 1; // 跑動速度
+                const trail = 0.18;             // 亮尾巴長度
+        
                 for (let i = 0; i < count; i++) {
-                    const ti = i / (count - 1);   // 這個點在曲線上的位置 (0~1)
-                    let d = (headT - ti + 1) % 1; // 簡單的環狀距離計算
-            
-                    // 已走過＋頭部：亮；還沒到：暗
+                    const ti = i / (count - 1);
+                    let d = (headT - ti + 1) % 1;
+        
                     const isBright = (d >= 0 && d <= trail);
                     const color = new THREE.Color().setHSL(
-                        0.58,               // 類似青藍色
+                        0.58,
                         1.0,
                         isBright ? 0.65 : 0.25
                     );
-            
+        
                     const idx = i * 3;
                     colors[idx]     = color.r;
                     colors[idx + 1] = color.g;
                     colors[idx + 2] = color.b;
                 }
-            
+        
                 particlesMesh.geometry.attributes.color.needsUpdate = true;
             }
-            
+        
+            // ✅ 導航光球
             if (navigatorMesh && navigatorMesh.userData.curve) {
                 const curve = navigatorMesh.userData.curve;
                 const time = Date.now() * 0.001;
-                const t = (time * 0.12) % 1;  // 跟 headT 同一個速度就會「貼在亮頭」
+                const t = (time * 0.12) % 1;  // 同 headT → 光球永遠在亮頭
                 const p = curve.getPoint(t);
                 navigatorMesh.position.copy(p);
             }
-
+        
             composer.render();
         }
+
     </script>
 </body>
 </html>
+
 
 
