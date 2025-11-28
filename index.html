@@ -73,6 +73,30 @@
             background: linear-gradient(135deg, var(--neon-blue) 0%, transparent 40%, transparent 60%, var(--neon-blue) 100%);
             z-index: -1;
         }
+        .panel-inner::after {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.15),
+                rgba(0,243,255,0.03),
+                transparent
+            );
+            pointer-events: none;
+            mix-blend-mode: screen;
+            opacity: 0.6;
+            animation: panel-scan 3.5s linear infinite;
+        }
+        
+        @keyframes panel-scan {
+            0%   { transform: translateY(-100%); }
+            100% { transform: translateY(250%); }
+        }
+        
         .panel-inner {
             position: relative;
             background: rgba(5, 10, 20, 0.95);
@@ -109,48 +133,91 @@
             font-size: 1.2rem; transition: 0.3s;
         }
         .close-btn:hover { color: #fff; border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
-  
+   
         .main-title {
             position: relative;
-            font-size: 1.6rem;           /* 縮小一點，避免在手機換行 */
+            font-size: 1.6rem;      /* 稍微縮小，手機比較不會斷行 */
             font-weight: 800;
             letter-spacing: 3px;
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        
+        /* 底層：立體感白字（不動） */
+        .title-base {
+            position: relative;
+            z-index: 1;
             color: #ffffff;
-            /* 多層陰影做立體感（壓出來的字） */
             text-shadow:
                 0 1px 0 #e0e0e0,
                 0 2px 0 #c8c8c8,
                 0 3px 0 #a0a0a0,
                 0 4px 3px rgba(0, 0, 0, 0.7),
                 0 0 10px rgba(0, 243, 255, 0.5);
-            overflow: hidden;            /* 才能限制掃描光只在字的範圍 */
         }
         
-        /* 只在這八個字上跑的掃描光 */
-        .main-title::before {
-            content: '';
+        /* 上層：透明字，用漸層當「字的光掃過去」 */
+        .title-scan {
             position: absolute;
-            top: 0;
-            left: -30%;
-            width: 30%;
-            height: 100%;
+            inset: 0;              /* top:0; right:0; bottom:0; left:0; */
+            z-index: 2;
+            color: transparent;
             background: linear-gradient(
-                to right,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0.8),
-                rgba(255,255,255,0)
+                120deg,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.9) 40%,
+                rgba(0,243,255,0.9) 60%,
+                rgba(255,255,255,0) 100%
             );
-            mix-blend-mode: screen;
-            pointer-events: none;
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            opacity: 0.9;
             animation: title-scan 2.8s linear infinite;
+            pointer-events: none;  /* 不擋點擊 */
         }
         
         @keyframes title-scan {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(400%); }
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
+        
+        /* 底線：流光跑馬，只在標題底下那一條 */
+        .main-title::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -4px;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                rgba(0,243,255,0),
+                rgba(0,243,255,0.9),
+                rgba(255,255,255,0.9),
+                rgba(0,243,255,0.9),
+                rgba(0,243,255,0)
+            );
+            background-size: 200% 100%;
+            box-shadow: 0 0 10px rgba(0,243,255,0.8);
+            animation: underline-flow 3s linear infinite;
+        }
+        
+        @keyframes underline-flow {
+            0%   { background-position: 0 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* 手機再小一點時字體再縮小一點，避免換行 */
+        @media (max-width: 400px) {
+            .main-title {
+                font-size: 1.4rem;
+                letter-spacing: 2px;
+            }
+        }
+
         
         /* 底線變「流光跑馬」效果 */
         .main-title::after {
@@ -334,8 +401,12 @@
                 <div class="corner-decor br"></div>
 
                 <div class="close-btn" onclick="hideUI()">✕</div>
+ 
+                <div class="main-title">
+                  <span class="title-base">神數雲起．達方天下</span>
+                  <span class="title-scan">神數雲起．達方天下</span>
+                </div>
 
-                <div class="main-title">神數雲起．達方天下</div>
                 <div class="sub-title">2025 MITAC 集團年終晚會 · Year-End Party</div>
                 <div class="tagline">Registration Lookup · 座位／報名查詢系統</div>
 
