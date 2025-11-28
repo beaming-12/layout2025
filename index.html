@@ -2,438 +2,756 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2025桌次地圖查詢</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2025 MITAC 年終晚會導航 V3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        :root { 
-            --hud-bg: rgba(10, 15, 30, 0.95); 
-            --neon-blue: #00f7ff; 
-            --neon-purple: #bc13fe;
-            --neon-gold: #ffaa00;
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-gold: #ffd700;
+            --neon-alert: #ff0055;
+            --glass-bg: rgba(8, 15, 30, 0.9);
+            --bg-deep: #020408;
         }
-        body, html { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #020205; color: #fff; }
-        
-        #three-canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-        
-        #ui-layer {
-            position: absolute; top: 30px; left: 30px; z-index: 10;
-            width: 360px; pointer-events: none;
-        }
-        
-        .hud-panel {
-            background: var(--hud-bg);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-top: 4px solid var(--neon-blue);
-            border-radius: 8px;
-            padding: 25px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            pointer-events: auto;
-        }
-        
-        .hud-title {
-            margin: 0 0 20px 0; font-size: 1.2rem; letter-spacing: 3px; font-weight: 800;
-            color: #fff; text-transform: uppercase;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .hud-title::after { content: ''; display: block; width: 10px; height: 10px; background: var(--neon-blue); border-radius: 50%; box-shadow: 0 0 10px var(--neon-blue); }
 
-        .input-wrapper { position: relative; margin-bottom: 20px; }
-        
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: var(--bg-deep);
+            font-family: 'Rajdhani', 'Noto Sans TC', sans-serif;
+            color: #fff;
+        }
+
+        #three-canvas-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            background: radial-gradient(circle at center, #0a1525 0%, #020408 100%);
+        }
+
+        .bg-particles {
+            position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 1;
+            background-image: radial-gradient(rgba(0, 243, 255, 0.15) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.35;
+        }
+
+        /* --- 主 UI 容器 --- */
+        #ui-container {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 420px; z-index: 10;
+            display: flex; flex-direction: column;
+            max-height: 90vh; 
+            transition: opacity 0.3s ease;
+        }
+
+        /* === 套用 index7 的 HUD 邊框風格 === */
+        .cyber-panel {
+            position: relative;
+            background: rgba(5, 10, 16, 0.9);
+            clip-path: polygon(
+                20px 0, 100% 0, 
+                100% calc(100% - 20px), calc(100% - 20px) 100%, 
+                0 100%, 0 20px
+            );
+            padding: 4px; /* 邊框厚度 */
+            overflow: hidden;
+        }
+        .cyber-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--neon-blue) 0%, transparent 40%, transparent 60%, var(--neon-blue) 100%);
+            z-index: -1;
+        }
+        .panel-inner {
+            position: relative;
+            background: rgba(5, 10, 20, 0.95);
+            padding: 25px 20px;
+            clip-path: polygon(
+                18px 0, 100% 0, 
+                100% calc(100% - 18px), calc(100% - 18px) 100%, 
+                0 100%, 0 18px
+            );
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            backdrop-filter: blur(15px);
+        }
+
+        /* 角落裝飾線條 */
+        .corner-decor {
+            position: absolute; width: 15px; height: 15px;
+            border: 2px solid var(--neon-blue);
+            transition: 0.3s;
+        }
+        .tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+        .tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+        .bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+        .br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+        /* 關閉按鈕 */
+        .close-btn {
+            position: absolute; top: 15px; right: 15px;
+            width: 30px; height: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            color: #888; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; transition: 0.3s;
+        }
+        .close-btn:hover { color: #fff; border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
+
+        .main-title {
+            font-size: 1.8rem; font-weight: 700; color: #fff;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.8);
+            letter-spacing: 2px; margin-bottom: 5px;
+        }
+        .sub-title { font-size: 1rem; color: #ccc; letter-spacing: 1px; }
+        .tagline {
+            font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; color: var(--neon-blue);
+            text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; opacity: 0.8;
+        }
+
+        .input-wrapper {
+            width: 100%; display: flex; gap: 8px; margin-bottom: 8px;
+        }
         input {
-            width: 100%; background: #1a1f2e; border: 1px solid #333;
-            color: #fff; padding: 15px; font-size: 1rem; outline: none; transition: 0.3s;
-            box-sizing: border-box; border-radius: 4px;
+            flex: 1; padding: 12px; border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            color: #fff; font-size: 1rem; text-align: center; outline: none;
         }
-        input:focus { border-color: var(--neon-blue); background: #23293d; }
-
+        input::placeholder { color: #999; }
+        input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
         button {
-            position: absolute; right: 5px; top: 5px; bottom: 5px;
-            background: var(--neon-blue); color: #000; border: none;
-            padding: 0 20px; font-weight: bold; cursor: pointer; transition: 0.3s;
-            border-radius: 3px;
+            padding: 0 20px; border-radius: 8px; border: none;
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            color: #fff; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
         }
-        button:hover { background: #fff; }
 
-        .result-card {
-            margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.05);
-            border-left: 3px solid var(--neon-gold); border-radius: 0 4px 4px 0;
+        #result-section {
+            width: 100%; display: none; margin-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 18px;
         }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
-        .info-val { color: #fff; font-weight: 600; }
-        .big-seat-num { font-size: 2.2rem; color: var(--neon-gold); font-weight: 800; }
-        
-        /* 載入光條 */
-        .loader-bar { height: 2px; width: 0%; background: var(--neon-blue); transition: width 0.3s; position: absolute; bottom: 0; left: 0; }
+
+        .status-badge {
+            display: inline-block; padding: 8px 25px; border-radius: 50px;
+            background: rgba(0, 255, 100, 0.08); border: 2px solid #00ff66;
+            color: #00ff66; font-size: 1.8rem;
+            font-weight: 800; letter-spacing: 1px; margin-bottom: 12px;
+            box-shadow: 0 0 15px rgba(0, 255, 100, 0.2);
+            text-shadow: 0 0 10px rgba(0, 255, 100, 0.5);
+        }
+
+        .emp-name { font-size: 2rem; font-weight: 700; color: #fff; }
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; text-align: left; margin-top: 15px;
+        }
+        .info-item { display: flex; flex-direction: column; }
+        .info-label { font-size: 0.7rem; color: var(--neon-blue); margin-bottom: 2px; letter-spacing: 1px; }
+        .info-value { font-size: 1rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+
+        .nav-btn-big {
+            grid-column: span 2; margin-top: 15px; padding: 12px;
+            background: transparent; border: 1px solid var(--neon-gold); color: var(--neon-gold);
+            font-weight: bold; cursor: pointer; border-radius: 8px; letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        .nav-btn-big:hover { background: var(--neon-gold); color: #000; box-shadow: 0 0 15px var(--neon-gold); }
+
+        /* 多筆清單 */
+        #candidate-list {
+            width: 100%; display:none; flex-direction:column; margin-top:10px;
+        }
+        .candidate-item {
+            padding: 10px; background: rgba(255,255,255,0.06); margin-bottom: 5px; cursor: pointer; text-align: left; border-radius: 6px;
+        }
+        .candidate-item:hover { background: rgba(0, 243, 255, 0.2); }
+
+        /* 重新開啟 UI 的按鈕 */
+        #reopen-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            padding: 10px 20px; border-radius: 30px; cursor: pointer; z-index: 5;
+            display: none; letter-spacing: 1px; font-weight: bold; font-size: 0.9rem;
+        }
+
+        /* 迷你 HUD：點地圖桌子用（參考 index7，但簡化） */
+        #mini-hud {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%);
+            width: 90%; max-width: 320px;
+            background: rgba(0, 0, 0, 0.88);
+            border: 1px solid var(--neon-blue);
+            border-top: 3px solid var(--neon-blue);
+            padding: 10px 14px;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 8;
+            box-shadow: 0 0 28px rgba(0,0,0,0.85);
+            clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+            font-size: 0.85rem;
+        }
+        #mini-hud.active { transform: translateX(-50%) translateY(0); }
+
+        .mini-info { display: flex; flex-direction: column; }
+        .mini-label { font-size: 0.65rem; color: var(--neon-blue); letter-spacing: 1px; text-transform: uppercase; }
+        .mini-val { font-size: 1.4rem; font-weight: 800; color: #fff; }
+
+        .mini-btn {
+            background: transparent; border: 1px solid var(--neon-gold); color: var(--neon-gold);
+            padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.8rem;
+            text-transform: uppercase; border-radius: 6px; letter-spacing: 1px;
+            transition: 0.2s;
+        }
+        .mini-btn:hover { background: var(--neon-gold); color: #000; box-shadow: 0 0 10px var(--neon-gold); }
+
+        .mini-close {
+            margin-left: 10px;
+            background: transparent; border: none; color: #777; cursor: pointer; font-size: 0.9rem;
+        }
+        .mini-close:hover { color: #fff; }
+
+        /* 點擊提示文案 */
+        .click-hint {
+            position: absolute; bottom: 5px; width: 100%; text-align: center;
+            color: rgba(255, 255, 255, 0.32); font-size: 0.7rem; letter-spacing: 1px;
+            pointer-events: none; z-index: 4;
+        }
     </style>
 </head>
 <body>
 
     <div id="three-canvas-container"></div>
+    <div class="bg-particles"></div>
+    <div class="click-hint">TAP TABLE ON MAP TO PREVIEW · 點擊桌次可預覽座位</div>
 
-    <div id="ui-layer">
-        <div class="hud-panel">
-            <h2 class="hud-title">SEAT NAV OS</h2>
-            <div class="input-wrapper">
-                <input type="text" id="employeeName" placeholder="輸入姓名查詢..." onkeydown="if(event.key==='Enter') queryDeskLocation()">
-                <button onclick="queryDeskLocation()">SEARCH</button>
-                <div class="loader-bar" id="loader"></div>
-            </div>
-            <div id="status-msg" style="font-size: 0.85rem; color: #666;">SYSTEM READY</div>
-            <div id="result-area" style="display: none;"></div>
+    <div id="reopen-btn" onclick="showUI()">▲ OPEN SEARCH / 開啟查詢</div>
+
+    <!-- 迷你 HUD：點地圖桌子使用 -->
+    <div id="mini-hud">
+        <div class="mini-info">
+            <div class="mini-label">MAP SELECTION</div>
+            <div class="mini-val" id="mini-desk-id">TABLE --</div>
+            <div style="font-size:0.7rem;color:#aaa;">From Map · 地圖選取</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <button class="mini-btn" id="mini-nav-btn">NAVIGATE</button>
+            <button class="mini-close" onclick="hideMiniHUD()">✕</button>
         </div>
     </div>
 
+    <!-- 主查詢 UI：套用 HUD 邊框 -->
+    <div id="ui-container">
+        <div class="cyber-panel">
+            <div class="panel-inner">
+                <div class="corner-decor tl"></div>
+                <div class="corner-decor tr"></div>
+                <div class="corner-decor bl"></div>
+                <div class="corner-decor br"></div>
+
+                <div class="close-btn" onclick="hideUI()">✕</div>
+
+                <div class="main-title">神數雲起．達方天下</div>
+                <div class="sub-title">2025 MITAC 集團年終晚會 · Year-End Party</div>
+                <div class="tagline">Registration Lookup · 座位／報名查詢系統</div>
+
+                <div class="input-wrapper">
+                    <input type="text" id="searchInput" placeholder="輸入工號或姓名 / EMP ID or Name" onkeydown="if(event.key==='Enter') searchEmployee()">
+                    <button onclick="searchEmployee()">查詢</button>
+                </div>
+                <div class="sub-title" style="font-size: 0.8rem; color:#888;">
+                    ＊支援工號與姓名查詢 · Supports ID & Name
+                </div>
+
+                <div id="candidate-list"></div>
+
+                <div id="result-section">
+                    <div style="font-size: 0.75rem; color: var(--neon-blue); letter-spacing: 2px; margin-bottom: 8px;">
+                        MITAC YEAR-END PARTY · 2025
+                    </div>
+                    
+                    <div id="status-badge" class="status-badge">Table --</div>
+                    
+                    <div id="res-name" class="emp-name">--</div>
+                    <div style="font-size: 0.9rem; color: #aaa; margin-bottom: 10px;">
+                        年終晚會報名資訊 · Registration Info
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">STATUS / 狀態</span>
+                            <span id="res-status" class="info-value">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">AREA / 地區</span>
+                            <span id="res-area" class="info-value">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">MEAL / 餐點</span>
+                            <span id="res-meal" class="info-value">--</span>
+                        </div>
+                        <div class="info-item" id="block-go">
+                            <span class="info-label">GO / 去程交通</span>
+                            <span id="res-go" class="info-value">--</span>
+                        </div>
+                        <div class="info-item" id="block-back">
+                            <span class="info-label">BACK / 回程交通</span>
+                            <span id="res-back" class="info-value">--</span>
+                        </div>
+
+                        <button class="nav-btn-big" id="btn-navigate">啟動導航 · NAVIGATE</button>
+                    </div>
+
+                    <div style="margin-top: 18px; font-size: 0.7rem; color: #555;">
+                        MITAC Welfare Committee · KT Ver. V3
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js & 相關程式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 
     <script>
-        // 🚨 請確認您的 GAS URL
+        // 🚨 GAS API（沿用你原本修正後的 URL）
         const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxQuKFadSahEF-BeKW1LVtHIMBLwPpK7RevNTMtnLHpFgT4a-L60O8j1fFCg98NHb4/exec';
 
-        let scene, camera, renderer, controls;
-        let tableGroups = {}; 
-        
-        // --- 佈局參數 ---
-        const COLS_PER_SIDE = 7; 
-        const ROWS_BOTTOM = 8;   
-        const ROWS_TOP = 9;      
-        const TOTAL_ROWS = 17; 
-        const TOTAL_COLS = 14;      
+        let scene, camera, renderer, controls, composer, particlesMesh;
+        let tableGroups = {};
+        let entrancePos = new THREE.Vector3(0, 0, 0);
+        let raycaster, mouse;
 
-        const SPACING_X = 5.5;  
-        const SPACING_Z = 5.5;  
-        const AISLE_GAP_X = 6;  
-        const AISLE_GAP_Z = 6;  
-
-        // 視覺升級參數
-        const TABLE_RADIUS = 1.6;
-        const INNER_TABLE_RADIUS = 0.8; // 轉盤半徑
+        const TOTAL_TABLES = 237; 
+        const SPACING_X = 7; 
+        const SPACING_Z = 7;  
+        const AISLE_GAP = 12;
 
         window.onload = init;
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020205);
-            scene.fog = new THREE.Fog(0x020205, 50, 250);
+            scene.fog = new THREE.FogExp2(0x020408, 0.005);
 
-            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 110, 100); 
-            camera.lookAt(0, 0, 0);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 150, 160); 
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true; // 開啟陰影
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
             document.getElementById('three-canvas-container').appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.maxPolarAngle = Math.PI / 2 - 0.1;
 
-            // 燈光系統
             const ambient = new THREE.AmbientLight(0x333333);
             scene.add(ambient);
-
-            // 主光源 (產生陰影)
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            
+            const dirLight = new THREE.DirectionalLight(0xaaccff, 0.8);
             dirLight.position.set(50, 100, 50);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            // 裝飾光 (增加質感)
-            const spotLight = new THREE.SpotLight(0x00f7ff, 0.5);
-            spotLight.position.set(0, 100, 0);
-            spotLight.angle = Math.PI / 4;
-            scene.add(spotLight);
-            
-            // 地板
-            const grid = new THREE.GridHelper(300, 60, 0x333333, 0x111111);
+            const pointLight = new THREE.PointLight(0x00f3ff, 1, 150);
+            pointLight.position.set(0, 30, 0);
+            scene.add(pointLight);
+
+            const grid = new THREE.GridHelper(500, 100, 0x00f3ff, 0x111122);
+            grid.material.opacity = 0.15;
+            grid.material.transparent = true;
             scene.add(grid);
 
-            // 生成佈局
             generateLayout();
+            setupBloom();
+
+            // 互動偵測
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            window.addEventListener('pointerdown', onPointerDown); // 手機/滑鼠通用
 
             window.addEventListener('resize', onResize);
             animate();
         }
 
-        // --- 核心佈局邏輯 (包含跳號機制) ---
+        function setupBloom() {
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.2;
+            bloomPass.strength = 1.0;
+            bloomPass.radius = 0.5;
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+        }
+
         function generateLayout() {
             const loader = new THREE.FontLoader();
             loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                
-                let tableCounter = 1; // 當前的桌號
-                let positionCounter = 1; // 當前的「位置」序號 (用來判斷第222個位置)
-
-                // 逐行生成
-                for (let c = 0; c < TOTAL_COLS; c++) {
-                    
-                    const isGoingUp = (c % 2 === 0);
-                    let columnPositions = [];
-
-                    for (let r = 0; r < TOTAL_ROWS; r++) {
-                        // 計算 X
-                        let xPos = (c - (TOTAL_COLS / 2) + 0.5) * SPACING_X;
-                        if (c >= COLS_PER_SIDE) xPos += AISLE_GAP_X / 2;
-                        else xPos -= AISLE_GAP_X / 2;
-
-                        // 計算 Z
-                        let zPos = ((TOTAL_ROWS / 2) - 0.5 - r) * SPACING_Z;
-                        if (r >= ROWS_BOTTOM) zPos -= AISLE_GAP_Z / 2;
-                        else zPos += AISLE_GAP_Z / 2;
-
-                        columnPositions.push({x: xPos, z: zPos});
+                let counter = 1;
+                const COLS = 14; const ROWS = 17;
+                for (let c = 0; c < COLS; c++) {
+                    const isUp = (c % 2 === 0);
+                    let positions = [];
+                    for (let r = 0; r < ROWS; r++) {
+                        let x = (c - 7 + 0.5) * SPACING_X + (c >= 7 ? AISLE_GAP/2 : -AISLE_GAP/2);
+                        let z = (8 - r) * SPACING_Z + (r >= 8 ? -AISLE_GAP/2 : AISLE_GAP/2);
+                        positions.push({x, z});
                     }
-
-                    // 蛇行反轉
-                    if (!isGoingUp) columnPositions.reverse();
-
-                    // 依序放置桌子
-                    columnPositions.forEach(pos => {
-                        
-                        // 🚨 特殊邏輯：位置 222 (在第一象限某處) 要留空
-                        // 我們用 positionCounter 來追蹤「物理位置」
-                        // 用 tableCounter 來追蹤「桌號」
-                        
-                        if (positionCounter === 222) {
-                            // 什麼都不做，跳過生成，桌號也不加
-                            console.log("Skipping position 222 (Empty Space)");
-                        } else {
-                            // 正常生成桌子
-                            createFancyTableGroup(tableCounter, pos.x, pos.z, font);
-                            tableCounter++; // 只有生成了桌子，桌號才+1
+                    if (!isUp) positions.reverse();
+                    positions.forEach(pos => {
+                        if ((c*ROWS + positions.indexOf(pos) + 1) === 222) return; 
+                        createHexTable(counter, pos.x, pos.z, font);
+                        if (counter === 226) {
+                            entrancePos.set(pos.x + 30, 0, pos.z + 10);
+                            createEntrance(entrancePos, font);
                         }
-
-                        positionCounter++; // 物理位置永遠+1
+                        counter++;
                     });
                 }
-                
-                console.log(`Total tables generated: ${tableCounter - 1}`); // 應該是 237
             });
         }
 
-        // --- 視覺升級：高級桌椅模型 ---
-        function createFancyTableGroup(id, x, z, font) {
+        function createHexTable(id, x, z, font) {
             const group = new THREE.Group();
             group.position.set(x, 0, z);
+            group.userData = { id: id };
 
-            // 1. 主桌布 (紅色絲絨質感)
-            const tableGeo = new THREE.CylinderGeometry(TABLE_RADIUS, TABLE_RADIUS, 0.2, 64);
-            const tableMat = new THREE.MeshStandardMaterial({ 
-                color: 0xcd5c5c, // 深紅色桌布 (改成indian red)
-                roughness: 0.8,
-                metalness: 0.1
-            });
-            const table = new THREE.Mesh(tableGeo, tableMat);
-            table.position.y = 0.8; // 桌腳高度
-            table.castShadow = true;
-            table.receiveShadow = true;
-            group.add(table);
+            // 底座
+            const base = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.5, 2.5, 0.5, 6),
+                new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 })
+            );
+            base.position.y = 0.25;
+            base.castShadow = true;
+            group.add(base);
 
-            // 2. 玻璃轉盤 (Inner Lazy Susan)
-            const susanGeo = new THREE.CylinderGeometry(INNER_TABLE_RADIUS, INNER_TABLE_RADIUS, 0.05, 32);
-            const susanMat = new THREE.MeshPhysicalMaterial({ 
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.4,
-                roughness: 0.1,
-                transmission: 0.8 // 玻璃質感
-            });
-            const susan = new THREE.Mesh(susanGeo, susanMat);
-            susan.position.y = 0.95;
-            group.add(susan);
+            // 桌面
+            const topGeo = new THREE.CylinderGeometry(2.3, 2.3, 0.05, 6);
+            const topMat = new THREE.MeshBasicMaterial({ color: 0x003344, transparent: true, opacity: 0.8 });
+            const top = new THREE.Mesh(topGeo, topMat);
+            top.position.y = 0.55;
+            const edges = new THREE.EdgesGeometry(topGeo);
+            top.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00f3ff })));
+            group.add(top);
 
-            // 3. 懸浮科技桌號
-            const textGeo = new THREE.TextGeometry(String(id), {
-                font: font, size: 0.8, height: 0.1
-            });
+            // 數據環
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(1.5, 0.03, 16, 6),
+                new THREE.MeshBasicMaterial({ color: 0x00f3ff })
+            );
+            ring.position.y = 1.5;
+            ring.rotation.x = Math.PI / 2;
+            group.add(ring);
+
+            // 桌號
+            const textGeo = new THREE.TextGeometry(String(id), { font: font, size: 0.8, height: 0.05 });
             textGeo.center();
-            const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const textMesh = new THREE.Mesh(textGeo, textMat);
-            textMesh.position.y = 2.5;
-            textMesh.rotation.x = -Math.PI / 2; // 躺平朝上
-            group.add(textMesh);
+            const text = new THREE.Mesh(textGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            text.position.y = 2.2;
+            group.add(text);
 
-            // 4. 生成 10 張有靠背的椅子
+            // 椅子
             const seats = [];
             for (let i = 0; i < 10; i++) {
-                const angle = (i / 10) * Math.PI * 2;
-                const dist = 2.2;
-                
+                const angle = (i/10) * Math.PI * 2;
+                const dist = 3.8;
                 const seatGroup = new THREE.Group();
-                const sx = Math.cos(angle) * dist;
-                const sz = Math.sin(angle) * dist;
-                seatGroup.position.set(sx, 0, sz);
-                seatGroup.rotation.y = -angle + Math.PI/2; // 面向桌子
-
-                // 椅墊
-                const cushionGeo = new THREE.BoxGeometry(0.6, 0.1, 0.6);
-                const cushionMat = new THREE.MeshStandardMaterial({ color: 0xcccccc }); // 灰色椅墊
-                const cushion = new THREE.Mesh(cushionGeo, cushionMat);
+                
+                const cushion = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.1, 0.8),
+                    new THREE.MeshStandardMaterial({ color: 0x333333 })
+                );
                 cushion.position.y = 0.5;
-                cushion.castShadow = true;
+                
+                const back = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.8, 0.1),
+                    new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x001133 })
+                );
+                back.position.set(0, 0.9, 0.35);
+
                 seatGroup.add(cushion);
-
-                // 椅背
-                const backGeo = new THREE.BoxGeometry(0.6, 0.6, 0.05);
-                const back = new THREE.Mesh(backGeo, cushionMat);
-                back.position.set(0, 0.8, 0.28); // 稍微往後
-                back.castShadow = true;
                 seatGroup.add(back);
-
-                // 綁定資料
-                // 我們綁定在 seatGroup 上，之後高亮時改變 cushion 的顏色
-                seatGroup.userData = { 
-                    parentId: id, 
-                    seatNum: i + 1, 
-                    cushionMesh: cushion, // 存起來方便改色
-                    backMesh: back
-                };
-
+                seatGroup.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+                seatGroup.rotation.y = -angle + Math.PI/2; 
                 group.add(seatGroup);
-                seats.push(seatGroup);
+                seats.push({ group: seatGroup, cushion: cushion, back: back });
             }
 
-            // 儲存參照
-            tableGroups[String(id)] = {
-                group: group,
-                seats: seats,
-                text: textMesh,
-                tableMesh: table
-            };
-
+            tableGroups[id] = { group, text, top, seats, ring };
             scene.add(group);
         }
 
-        async function queryDeskLocation() {
-            const input = document.getElementById('employeeName');
-            const status = document.getElementById('status-msg');
-            const loader = document.getElementById('loader');
-            const resultArea = document.getElementById('result-area');
+        function createEntrance(pos, font) {
+            const geo = new THREE.ConeGeometry(1, 3, 4);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+            const marker = new THREE.Mesh(geo, mat);
+            marker.position.set(pos.x, 5, pos.z);
+            marker.rotation.x = Math.PI;
+            new TWEEN.Tween(marker.position).to({ y: 7 }, 1000).yoyo(true).repeat(Infinity).start();
+            scene.add(marker);
             
-            const name = input.value.trim();
-            if(!name) return;
+            const textGeo = new THREE.TextGeometry("ENTRANCE", { font: font, size: 1.5, height: 0.1 });
+            textGeo.center();
+            const text = new THREE.Mesh(textGeo, new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+            text.position.set(pos.x, 9, pos.z);
+            scene.add(text);
+        }
 
-            status.innerText = "SEARCHING DATABASE...";
-            loader.style.width = "100%";
+        // === 點擊桌子：不再強制打開搜尋 UI，只顯示 mini HUD ===
+        function onPointerDown(event) {
+            // 點到 UI / mini-hud 本身則不進行 3D 點擊
+            if (event.target.closest('#ui-container') || event.target.closest('#mini-hud') || event.target.closest('#reopen-btn')) {
+                return;
+            }
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj.parent && !obj.userData.id) { obj = obj.parent; }
+                
+                if (obj.userData.id) {
+                    const tableId = obj.userData.id;
+                    showMiniHUD(tableId);   // 底部彈出 mini HUD
+                    highlight3D(tableId);   // 高亮桌子
+                }
+            }
+        }
+
+        function showMiniHUD(tableId) {
+            const mini = document.getElementById('mini-hud');
+            document.getElementById('mini-desk-id').innerText = `TABLE ${tableId}`;
+
+            // 綁定 mini 導航按鈕
+            document.getElementById('mini-nav-btn').onclick = () => {
+                flyToTable(tableId);
+                createParticlePath(tableId);
+                hideMiniHUD();
+            };
+
+            mini.classList.add('active');
+        }
+
+        function hideMiniHUD() {
+            document.getElementById('mini-hud').classList.remove('active');
+        }
+
+        // === GAS 查詢 ===
+        async function searchEmployee() {
+            const input = document.getElementById('searchInput');
+            const list = document.getElementById('candidate-list');
+            const resultSec = document.getElementById('result-section');
+            const val = input.value.trim();
+            if(!val) return;
+
+            input.placeholder = "Searching...";
+            list.innerHTML = ''; list.style.display = 'none';
+            resultSec.style.display = 'none';
             resetHighlights();
-            resultArea.style.display = 'none';
+            hideMiniHUD();
 
             try {
-                const res = await fetch(`${GAS_API_URL}?name=${encodeURIComponent(name)}`);
+                const res = await fetch(`${GAS_API_URL}?name=${encodeURIComponent(val)}`);
                 const data = await res.json();
 
-                loader.style.width = "0%";
-
-                if(!data.success || data.count === 0) {
-                    status.innerText = "NO RECORD FOUND / 查無此人";
+                if(!data.success) {
+                    input.value = "";
+                    input.placeholder = "Access Denied / No Data";
+                    return;
+                }
+                
+                if (data.count === 0) {
+                    input.value = "";
+                    input.placeholder = "No Record Found";
                     return;
                 }
 
-                status.innerText = `RESULT FOUND: ${data.count}`;
-                resultArea.style.display = 'block';
-                resultArea.innerHTML = '';
-
-                data.data.forEach((emp, idx) => {
-                    const deskStr = String(emp.Desk).trim(); 
-                    const parts = deskStr.split('-'); 
-
-                    let bigTableId = parts[0];
-                    let seatNum = parts.length > 1 ? parseInt(parts[1]) : null;
-
-                    const card = document.createElement('div');
-                    card.className = 'result-card';
-                    card.innerHTML = `
-                        <div class="info-row"><span>NAME</span><span class="info-val">${emp.Name}</span></div>
-                        <div class="info-row"><span>DEPT</span><span class="info-val">${emp.Dept}</span></div>
-                        <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px; text-align:right;">
-                            <div class="big-seat-num">${deskStr}</div>
-                        </div>
-                    `;
-                    resultArea.appendChild(card);
-
-                    const target = tableGroups[bigTableId];
-                    if(target) {
-                        // 高亮桌號
-                        target.text.material.color.setHex(0xffaa00);
-                        target.text.scale.set(2, 2, 2);
-                        
-                        // 高亮桌布 (變成亮一點的紅色)
-                        target.tableMesh.material.emissive.setHex(0x330000);
-
-                        // 高亮椅子
-                        if(seatNum && seatNum >= 1 && seatNum <= 10) {
-                            const seatObj = target.seats[seatNum - 1];
-                            if(seatObj) {
-                                // 椅子變亮粉紅
-                                seatObj.userData.cushionMesh.material.color.setHex(0xff0055);
-                                seatObj.userData.cushionMesh.material.emissive.setHex(0x440022);
-                                seatObj.userData.backMesh.material.color.setHex(0xff0055);
-                            }
-                        } else {
-                            // 整桌椅子變色
-                            target.seats.forEach(s => {
-                                s.userData.cushionMesh.material.color.setHex(0xffaa00);
-                            });
-                        }
-
-                        if(idx === 0) flyTo(target.group.position);
-                    }
-                });
+                if(data.count === 1) {
+                    displayResult(data.data[0]);
+                } else {
+                    list.style.display = 'flex';
+                    data.data.forEach(emp => {
+                        const div = document.createElement('div');
+                        div.className = 'candidate-item';
+                        div.innerHTML = `<strong>${emp.Name}</strong> <small>(${emp.EmpID})</small>`;
+                        div.onclick = () => displayResult(emp);
+                        list.appendChild(div);
+                    });
+                }
+                input.value = "";
+                input.placeholder = "輸入工號或姓名 / EMP ID or Name";
 
             } catch(e) {
                 console.error(e);
-                status.innerText = "CONNECTION ERROR";
-                loader.style.width = "0%";
+                input.placeholder = "Connection Error";
+            }
+        }
+
+        function displayResult(emp) {
+            document.getElementById('candidate-list').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+
+            document.getElementById('res-name').innerText = emp.Name;
+            document.getElementById('status-badge').innerText = `Table ${emp.Desk}`;
+            document.getElementById('res-status').innerText = emp.Status;
+            document.getElementById('res-area').innerText = emp.Area;
+            document.getElementById('res-meal').innerText = emp.Meal;
+
+            const blockGo = document.getElementById('block-go');
+            const blockBack = document.getElementById('block-back');
+            
+            if(emp.Go && String(emp.Go).trim() !== '') {
+                blockGo.style.display = 'flex';
+                document.getElementById('res-go').innerText = emp.Go;
+            } else {
+                blockGo.style.display = 'none';
+            }
+
+            if(emp.Back && String(emp.Back).trim() !== '') {
+                blockBack.style.display = 'flex';
+                document.getElementById('res-back').innerText = emp.Back;
+            } else {
+                blockBack.style.display = 'none';
+            }
+
+            const tableId = String(emp.Desk).split('-')[0];
+            const seatNum = String(emp.Desk).split('-')[1];
+
+            document.getElementById('btn-navigate').onclick = function() {
+                flyToTable(tableId);
+                createParticlePath(tableId);
+                hideUI();         // 導航開始後收起主 UI
+                hideMiniHUD();    // 同時關掉 mini HUD
+            };
+
+            highlight3D(tableId, seatNum);
+        }
+
+        // === 視覺特效 ===
+        function highlight3D(tableId, seatNum) {
+            resetHighlights();
+            const target = tableGroups[tableId];
+            if(target) {
+                target.top.material.color.setHex(0xffaa00);
+                target.text.material.color.setHex(0xffffff);
+                target.text.scale.set(2.5, 2.5, 2.5);
+                target.ring.material.color.setHex(0xffaa00);
+
+                if(seatNum) {
+                    const idx = parseInt(seatNum) - 1;
+                    if(target.seats[idx]) {
+                        target.seats[idx].back.material.emissive.setHex(0xff0055);
+                        target.seats[idx].back.material.emissiveIntensity = 2;
+                    }
+                }
             }
         }
 
         function resetHighlights() {
-            for(let id in tableGroups) {
-                const t = tableGroups[id];
-                // 恢復文字
+            Object.values(tableGroups).forEach(t => {
+                t.top.material.color.setHex(0x003344);
                 t.text.material.color.setHex(0xffffff);
-                t.text.scale.set(1, 1, 1);
-                // 恢復桌布無自發光
-                t.tableMesh.material.emissive.setHex(0x000000);
-                
-                // 恢復椅子灰色
+                t.text.scale.set(1,1,1);
+                t.ring.material.color.setHex(0x00f3ff);
                 t.seats.forEach(s => {
-                    s.userData.cushionMesh.material.color.setHex(0xcccccc);
-                    s.userData.cushionMesh.material.emissive.setHex(0x000000);
-                    s.userData.backMesh.material.color.setHex(0xcccccc);
+                    s.back.material.emissive.setHex(0x001133);
+                    s.back.material.emissiveIntensity = 1;
                 });
-            }
+            });
+            if(particlesMesh) scene.remove(particlesMesh);
         }
 
-        function flyTo(pos) {
-            const targetPos = { x: pos.x, y: 30, z: pos.z + 15 }; 
-            
-            new TWEEN.Tween(camera.position).to(targetPos, 1200)
+        function flyToTable(tableId) {
+            const target = tableGroups[tableId];
+            if(!target) return;
+            const pos = target.group.position;
+            new TWEEN.Tween(camera.position).to({ x: pos.x, y: 50, z: pos.z + 40 }, 1500)
                 .easing(TWEEN.Easing.Cubic.Out).start();
-                
-            new TWEEN.Tween(controls.target).to({x: pos.x, y: 0, z: pos.z}, 1200)
+            new TWEEN.Tween(controls.target).to({ x: pos.x, y: 0, z: pos.z }, 1500)
                 .easing(TWEEN.Easing.Cubic.Out).start();
+        }
+
+        function createParticlePath(tableId) {
+            const target = tableGroups[tableId];
+            if(!target) return;
+            if(particlesMesh) scene.remove(particlesMesh);
+            const curve = new THREE.CatmullRomCurve3([
+                entrancePos.clone(),
+                new THREE.Vector3(entrancePos.x, 20, entrancePos.z - 20),
+                new THREE.Vector3(target.group.position.x, 30, target.group.position.z + 10),
+                target.group.position.clone().add(new THREE.Vector3(0, 5, 0))
+            ]);
+            const count = 1500;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const curvePoints = curve.getSpacedPoints(count);
+            curvePoints.forEach((p, i) => {
+                positions.push(p.x, p.y, p.z);
+                const col = new THREE.Color().setHSL(0.6 - (i/count)*0.5, 1, 0.5);
+                colors.push(col.r, col.g, col.b);
+            });
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            const material = new THREE.PointsMaterial({ size: 0.6, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            particlesMesh = new THREE.Points(geometry, material);
+            particlesMesh.userData = { curve: curve, count: count };
+            scene.add(particlesMesh);
+        }
+
+        // --- UI 開關 ---
+        function hideUI() {
+            document.getElementById('ui-container').style.display = 'none';
+            document.getElementById('reopen-btn').style.display = 'block';
+        }
+        function showUI() {
+            document.getElementById('ui-container').style.display = 'flex';
+            document.getElementById('reopen-btn').style.display = 'none';
         }
 
         function onResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
             requestAnimationFrame(animate);
             TWEEN.update();
             controls.update();
-            renderer.render(scene, camera);
+
+            Object.values(tableGroups).forEach(t => {
+                t.text.lookAt(camera.position);
+                t.ring.rotation.z += 0.01;
+            });
+
+            if(particlesMesh) {
+                const positions = particlesMesh.geometry.attributes.position.array;
+                const curve = particlesMesh.userData.curve;
+                const count = particlesMesh.userData.count;
+                const time = Date.now() * 0.001;
+                for(let i=0; i<count; i++) {
+                    let t = (i/count + time*0.5) % 1;
+                    const p = curve.getPoint(t);
+                    positions[i*3] = p.x;
+                    positions[i*3+1] = p.y;
+                    positions[i*3+2] = p.z;
+                }
+                particlesMesh.geometry.attributes.position.needsUpdate = true;
+            }
+            composer.render();
         }
     </script>
 </body>
-
 </html>
