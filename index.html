@@ -7,32 +7,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --neon-blue: #00f3ff;
-            --neon-gold: #ffd700;
-            --neon-alert: #ff0055;
-            --glass-bg: rgba(8, 15, 30, 0.9);
-            --bg-deep: #020408;
+            /* 依主視覺調整的核心色系 */
+            --bg-deep: #020618;                  /* 整體深藍底 */
+            --panel-bg: rgba(4, 12, 30, 0.96);   /* 卡片內部底色 */
+            --panel-border: #25d4ff;             /* 邊框主色（電路藍） */
+            --panel-border-alt: #6a4bff;         /* 邊框漸層副色（偏紫） */
+            --neon-blue: #25e4ff;               /* 強光藍／電路線色 */
+            --neon-gold: #ffd58a;               /* 少量點綴用金色 */
+            --neon-alert: #ff4f8a;              /* 警示／高亮桃紅 */
+            --glass-bg: rgba(6, 16, 40, 0.9);
         }
-
+    
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
             background-color: var(--bg-deep);
             font-family: 'Rajdhani', 'Noto Sans TC', sans-serif;
             color: #fff;
         }
-
+    
         #three-canvas-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
-            background: radial-gradient(circle at center, #0a1525 0%, #020408 100%);
+            /* 中間稍亮、兩側偏紫藍，貼近主視覺 */
+            background:
+                radial-gradient(circle at 50% 40%, #12345a 0%, #050b20 40%, #020618 100%);
         }
-
+    
         .bg-particles {
             position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 1;
-            background-image: radial-gradient(rgba(0, 243, 255, 0.15) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.35;
+            background-image: radial-gradient(rgba(37, 228, 255, 0.18) 1px, transparent 1px);
+            background-size: 55px 55px;
+            opacity: 0.32;
         }
-
+    
         /* --- 主 UI 容器 --- */
         #ui-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -46,10 +52,11 @@
             0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
             50%      { transform: translate(-50%, -50%) translateY(-6px); }
         }
-        /* === 套用 index7 的 HUD 邊框風格 === */
+    
+        /* === HUD 邊框風格，色系改成主視覺藍＋紫 === */
         .cyber-panel {
             position: relative;
-            background: rgba(5, 10, 16, 0.9);
+            background: rgba(2, 6, 18, 0.95);
             clip-path: polygon(
                 20px 0, 100% 0, 
                 100% calc(100% - 20px), calc(100% - 20px) 100%, 
@@ -57,22 +64,28 @@
             );
             padding: 4px; /* 邊框厚度 */
             overflow: hidden;
-            box-shadow: 0 0 18px rgba(0, 243, 255, 0.25);
+            box-shadow: 0 0 28px rgba(12, 120, 255, 0.45);
             animation: card-breathe 4s ease-in-out infinite;
         }
         @keyframes card-breathe {
             0%, 100% {
-                box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+                box-shadow: 0 0 14px rgba(37, 228, 255, 0.35);
             }
             50% {
-                box-shadow: 0 0 22px rgba(0, 243, 255, 0.55);
+                box-shadow: 0 0 28px rgba(37, 228, 255, 0.7);
             }
         }        
         .cyber-panel::before {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, var(--neon-blue) 0%, transparent 40%, transparent 60%, var(--neon-blue) 100%);
+            background: linear-gradient(135deg,
+                var(--panel-border) 0%,
+                transparent 40%,
+                transparent 60%,
+                var(--panel-border-alt) 100%);
             z-index: -1;
         }
+    
+        /* 卡片上的掃描光：改成偏藍、透明度較低，不會搶過標題 */
         .panel-inner::after {
             content: '';
             position: absolute;
@@ -82,16 +95,15 @@
             height: 40%;
             background: linear-gradient(
                 to bottom,
-                rgba(255,255,255,0.15),
-                rgba(0,243,255,0.03),
+                rgba(80,160,255,0.18),
+                rgba(37,228,255,0.05),
                 transparent
             );
             pointer-events: none;
             mix-blend-mode: screen;
-            opacity: 0.6;
+            opacity: 0.5;
             animation: panel-scan 3.5s linear infinite;
         }
-        
         @keyframes panel-scan {
             0%   { transform: translateY(-100%); }
             100% { transform: translateY(250%); }
@@ -99,7 +111,7 @@
         
         .panel-inner {
             position: relative;
-            background: rgba(5, 10, 20, 0.95);
+            background: radial-gradient(circle at 50% 0%, rgba(32,86,180,0.85) 0%, var(--panel-bg) 35%, #030817 100%);
             padding: 25px 20px;
             clip-path: polygon(
                 18px 0, 100% 0, 
@@ -107,40 +119,47 @@
                 0 100%, 0 18px
             );
             display: flex; flex-direction: column; align-items: center; text-align: center;
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(18px);
         }
- 
-
+    
         /* 角落裝飾線條 */
         .corner-decor {
             position: absolute; width: 15px; height: 15px;
-            border: 2px solid var(--neon-blue);
+            border: 2px solid rgba(37, 228, 255, 0.9);
+            box-shadow: 0 0 8px rgba(37, 228, 255, 0.6);
             transition: 0.3s;
         }
         .tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
         .tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
         .bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
         .br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
-
+    
         /* 關閉按鈕 */
         .close-btn {
             position: absolute; top: 15px; right: 15px;
             width: 30px; height: 30px;
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 50%;
-            color: #888; cursor: pointer;
+            color: #9aa4c3; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             font-size: 1.2rem; transition: 0.3s;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 60%);
         }
-        .close-btn:hover { color: #fff; border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
-   
+        .close-btn:hover {
+            color: #ffffff;
+            border-color: var(--neon-blue);
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), rgba(37,228,255,0.15) 60%);
+            box-shadow: 0 0 10px rgba(37,228,255,0.7);
+        }
+    
+        /* === 主標題：底層立體白字 + 上層字形掃描，背景不掃 === */
         .main-title {
             position: relative;
             font-size: 1.6rem;      /* 稍微縮小，手機比較不會斷行 */
             font-weight: 800;
             letter-spacing: 3px;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: inline-block;
         }
         
@@ -150,37 +169,38 @@
             z-index: 1;
             color: #ffffff;
             text-shadow:
-                0 1px 0 #e0e0e0,
-                0 2px 0 #c8c8c8,
-                0 3px 0 #a0a0a0,
-                0 4px 3px rgba(0, 0, 0, 0.7),
-                0 0 10px rgba(0, 243, 255, 0.5);
+                0 1px 0 #e0e4ff,
+                0 2px 0 #c0c8f0,
+                0 3px 0 #96a0d8,
+                0 4px 4px rgba(0, 0, 0, 0.85),
+                0 0 12px rgba(37, 228, 255, 0.75);
         }
         
-        /* 上層：透明字，用漸層當「字的光掃過去」 */
+        /* 上層：透明字，用漸層當「字的光掃過去」，只在字形內顯示 */
         .title-scan {
             position: absolute;
-            inset: 0;              /* top:0; right:0; bottom:0; left:0; */
+            inset: 0;
             z-index: 2;
             color: transparent;
             background: linear-gradient(
                 120deg,
                 rgba(255,255,255,0) 0%,
-                rgba(255,255,255,0.9) 40%,
-                rgba(0,243,255,0.9) 60%,
+                rgba(255,255,255,0.95) 35%,
+                rgba(134,209,255,0.95) 50%,
+                rgba(37,228,255,0.95) 60%,
                 rgba(255,255,255,0) 100%
             );
-            background-size: 200% 100%;
+            background-size: 220% 100%;
             -webkit-background-clip: text;
             background-clip: text;
-            opacity: 0.9;
+            opacity: 0.95;
             animation: title-scan 2.8s linear infinite;
-            pointer-events: none;  /* 不擋點擊 */
+            pointer-events: none;
         }
         
         @keyframes title-scan {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            0%   { background-position: 220% 0; }
+            100% { background-position: -220% 0; }
         }
         
         /* 底線：流光跑馬，只在標題底下那一條 */
@@ -190,18 +210,18 @@
             left: 50%;
             bottom: -4px;
             transform: translateX(-50%);
-            width: 80%;
+            width: 82%;
             height: 2px;
             background: linear-gradient(
                 90deg,
                 rgba(0,243,255,0),
                 rgba(0,243,255,0.9),
-                rgba(255,255,255,0.9),
+                rgba(255,255,255,0.95),
                 rgba(0,243,255,0.9),
                 rgba(0,243,255,0)
             );
             background-size: 200% 100%;
-            box-shadow: 0 0 10px rgba(0,243,255,0.8);
+            box-shadow: 0 0 10px rgba(37,228,255,0.9);
             animation: underline-flow 3s linear infinite;
         }
         
@@ -217,155 +237,151 @@
                 letter-spacing: 2px;
             }
         }
-
-        
-        /* 底線變「流光跑馬」效果 */
-        .main-title::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 0;   /* ✅ 改成 0，先確保在字的框裡 */
-            transform: translateX(-50%);
-            width: 80%;
-            height: 2px;
-            background: linear-gradient(
-                90deg,
-                rgba(0,243,255,0),
-                rgba(0,243,255,0.9),
-                rgba(255,255,255,0.9),
-                rgba(0,243,255,0.9),
-                rgba(0,243,255,0)
-            );
-            background-size: 200% 100%;
-            box-shadow: 0 0 10px rgba(0,243,255,0.8);
-            animation: underline-flow 3s linear infinite;
+    
+        .sub-title {
+            font-size: 1rem;
+            color: #d0dcff;
+            letter-spacing: 1px;
+            text-shadow: 0 0 6px rgba(10,80,200,0.7);
         }
-        
-        @keyframes underline-flow {
-            0%   { background-position: 0 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        
-        /* 手機再小一點時再縮一點字體 */
-        @media (max-width: 400px) {
-            .main-title {
-                font-size: 1.4rem;
-                letter-spacing: 2px;
-            }
-        }
-
-
-        .sub-title { font-size: 1rem; color: #ccc; letter-spacing: 1px; }
+    
         .tagline {
-            font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; color: var(--neon-blue);
-            text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; opacity: 0.8;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            color: rgba(172, 207, 255, 0.92);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            opacity: 0.9;
         }
-
+    
         .input-wrapper {
             width: 100%; display: flex; gap: 8px; margin-bottom: 8px;
         }
         input {
             flex: 1; padding: 12px; border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(76, 167, 255, 0.7);
             color: #fff; font-size: 1rem; text-align: center; outline: none;
+            box-shadow: 0 0 10px rgba(20, 80, 180, 0.4) inset;
         }
-        input::placeholder { color: #999; }
-        input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
+        input::placeholder { color: #9ca7c5; }
+        input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 12px rgba(37, 228, 255, 0.7);
+        }
         button {
             padding: 0 20px; border-radius: 8px; border: none;
-            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            background: linear-gradient(135deg, #4ec5ff, #2b6bff);
             color: #fff; font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+            box-shadow: 0 0 15px rgba(40, 130, 255, 0.7);
         }
-
+        button:hover {
+            box-shadow: 0 0 20px rgba(37, 228, 255, 0.9);
+            transform: translateY(-1px);
+        }
+    
         #result-section {
             width: 100%; display: none; margin-top: 10px;
-            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 18px;
+            border-top: 1px solid rgba(180,195,255,0.2); padding-top: 18px;
         }
-
+    
         .status-badge {
-            display: inline-block; padding: 8px 25px; border-radius: 50px;
-            background: rgba(0, 255, 100, 0.08); border: 2px solid #00ff66;
-            color: #00ff66; font-size: 1.8rem;
+            display: inline-block; padding: 8px 25px; border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, rgba(116,255,178,0.25), transparent 70%);
+            border: 2px solid #7bffba;
+            color: #b4ffd9; font-size: 1.8rem;
             font-weight: 800; letter-spacing: 1px; margin-bottom: 12px;
-            box-shadow: 0 0 15px rgba(0, 255, 100, 0.2);
-            text-shadow: 0 0 10px rgba(0, 255, 100, 0.5);
+            box-shadow: 0 0 15px rgba(80, 255, 190, 0.4);
+            text-shadow: 0 0 10px rgba(110, 255, 200, 0.8);
         }
-
-        .emp-name { font-size: 2rem; font-weight: 700; color: #fff; }
+    
+        .emp-name { font-size: 2rem; font-weight: 700; color: #ffffff; }
         .info-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; text-align: left; margin-top: 15px;
         }
         .info-item { display: flex; flex-direction: column; }
         .info-label { font-size: 0.7rem; color: var(--neon-blue); margin-bottom: 2px; letter-spacing: 1px; }
-        .info-value { font-size: 1rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-
+        .info-value {
+            font-size: 1rem; color: #e4e9ff;
+            border-bottom: 1px solid rgba(157,175,232,0.45);
+            padding-bottom: 5px;
+        }
+    
         .nav-btn-big {
             grid-column: span 2; margin-top: 15px; padding: 12px;
             background: transparent; border: 1px solid var(--neon-gold); color: var(--neon-gold);
             font-weight: bold; cursor: pointer; border-radius: 8px; letter-spacing: 2px;
             transition: 0.3s;
         }
-        .nav-btn-big:hover { background: var(--neon-gold); color: #000; box-shadow: 0 0 15px var(--neon-gold); }
-
+        .nav-btn-big:hover {
+            background: var(--neon-gold); color: #000;
+            box-shadow: 0 0 18px rgba(255, 213, 138, 0.9);
+        }
+    
         /* 多筆清單 */
         #candidate-list {
             width: 100%; display:none; flex-direction:column; margin-top:10px;
         }
         .candidate-item {
-            padding: 10px; background: rgba(255,255,255,0.06); margin-bottom: 5px; cursor: pointer; text-align: left; border-radius: 6px;
+            padding: 10px;
+            background: rgba(23, 40, 92, 0.75);
+            margin-bottom: 5px; cursor: pointer; text-align: left; border-radius: 6px;
+            border: 1px solid rgba(79, 140, 255, 0.6);
         }
-        .candidate-item:hover { background: rgba(0, 243, 255, 0.2); }
-
+        .candidate-item:hover {
+            background: rgba(41, 95, 220, 0.85);
+            box-shadow: 0 0 10px rgba(37, 228, 255, 0.6);
+        }
+    
         /* 重新開啟 UI 的按鈕 */
         #reopen-btn {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.85); border: 1px solid var(--neon-blue); color: var(--neon-blue);
             padding: 10px 20px; border-radius: 30px; cursor: pointer; z-index: 5;
             display: none; letter-spacing: 1px; font-weight: bold; font-size: 0.9rem;
+            box-shadow: 0 0 12px rgba(37,228,255,0.7);
         }
-
+    
         /* 迷你 HUD：點地圖桌子用（參考 index7，但簡化） */
         #mini-hud {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%);
             width: 90%; max-width: 320px;
-            background: rgba(0, 0, 0, 0.88);
-            border: 1px solid var(--neon-blue);
+            background: rgba(3, 8, 24, 0.96);
+            border: 1px solid rgba(76, 167, 255, 0.8);
             border-top: 3px solid var(--neon-blue);
             padding: 10px 14px;
             display: flex; justify-content: space-between; align-items: center;
             transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             z-index: 8;
-            box-shadow: 0 0 28px rgba(0,0,0,0.85);
+            box-shadow: 0 0 28px rgba(4, 12, 40, 0.95);
             clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
             font-size: 0.85rem;
         }
         #mini-hud.active { transform: translateX(-50%) translateY(0); }
-
+    
         .mini-info { display: flex; flex-direction: column; }
         .mini-label { font-size: 0.65rem; color: var(--neon-blue); letter-spacing: 1px; text-transform: uppercase; }
-        .mini-val { font-size: 1.4rem; font-weight: 800; color: #fff; }
-
+        .mini-val { font-size: 1.4rem; font-weight: 800; color: #ffffff; }
+    
         .mini-btn {
             background: transparent; border: 1px solid var(--neon-gold); color: var(--neon-gold);
             padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.8rem;
             text-transform: uppercase; border-radius: 6px; letter-spacing: 1px;
             transition: 0.2s;
         }
-        .mini-btn:hover { background: var(--neon-gold); color: #000; box-shadow: 0 0 10px var(--neon-gold); }
-
+        .mini-btn:hover { background: var(--neon-gold); color: #000; box-shadow: 0 0 10px rgba(255, 213, 138, 0.9); }
+    
         .mini-close {
             margin-left: 10px;
             background: transparent; border: none; color: #777; cursor: pointer; font-size: 0.9rem;
         }
         .mini-close:hover { color: #fff; }
-
+    
         /* 點擊提示文案 */
         .click-hint {
             position: absolute; bottom: 5px; width: 100%; text-align: center;
-            color: rgba(255, 255, 255, 0.32); font-size: 0.7rem; letter-spacing: 1px;
+            color: rgba(207, 221, 255, 0.35); font-size: 0.7rem; letter-spacing: 1px;
             pointer-events: none; z-index: 4;
         }
     </style>
@@ -993,6 +1009,7 @@
     </script>
 </body>
 </html>
+
 
 
 
