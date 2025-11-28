@@ -57,7 +57,17 @@
             );
             padding: 4px; /* 邊框厚度 */
             overflow: hidden;
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.25);
+            animation: card-breathe 4s ease-in-out infinite;
         }
+        @keyframes card-breathe {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+            }
+            50% {
+                box-shadow: 0 0 22px rgba(0, 243, 255, 0.55);
+            }
+        }        
         .cyber-panel::before {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, var(--neon-blue) 0%, transparent 40%, transparent 60%, var(--neon-blue) 100%);
@@ -75,30 +85,7 @@
             display: flex; flex-direction: column; align-items: center; text-align: center;
             backdrop-filter: blur(15px);
         }
-        /*
-        .panel-inner::after {
-            content: '';
-            position: absolute;
-            top: -40%;
-            left: 0;
-            width: 100%;
-            height: 40%;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0.15),
-                rgba(0,243,255,0.03),
-                transparent
-            );
-            pointer-events: none;
-            mix-blend-mode: screen;
-            opacity: 0.6;
-            animation: panel-scan 3.5s linear infinite;
-        }
-        
-        @keyframes panel-scan {
-            0%   { transform: translateY(-100%); }
-            100% { transform: translateY(250%); }
-        }*/
+ 
 
         /* 角落裝飾線條 */
         .corner-decor {
@@ -170,7 +157,7 @@
             content: '';
             position: absolute;
             left: 50%;
-            bottom: -6px;
+            bottom: 0;   /* ✅ 改成 0，先確保在字的框裡 */
             transform: translateX(-50%);
             width: 80%;
             height: 2px;
@@ -191,6 +178,7 @@
             0%   { background-position: 0 0; }
             100% { background-position: -200% 0; }
         }
+
         
         /* 手機再小一點時再縮一點字體 */
         @media (max-width: 400px) {
@@ -934,6 +922,7 @@
     </script>
 </body>
 </html>
+
 
 
 
