@@ -71,6 +71,29 @@
             display: flex; flex-direction: column; align-items: center; text-align: center;
             backdrop-filter: blur(15px);
         }
+        .panel-inner::after {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.15),
+                rgba(0,243,255,0.03),
+                transparent
+            );
+            pointer-events: none;
+            mix-blend-mode: screen;
+            opacity: 0.6;
+            animation: panel-scan 3.5s linear infinite;
+        }
+        
+        @keyframes panel-scan {
+            0%   { transform: translateY(-100%); }
+            100% { transform: translateY(250%); }
+        }
 
         /* 角落裝飾線條 */
         .corner-decor {
@@ -94,12 +117,35 @@
             font-size: 1.2rem; transition: 0.3s;
         }
         .close-btn:hover { color: #fff; border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
-
+ 
         .main-title {
-            font-size: 1.8rem; font-weight: 700; color: #fff;
-            text-shadow: 0 0 10px rgba(0, 243, 255, 0.8);
-            letter-spacing: 2px; margin-bottom: 5px;
+            position: relative;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-align: center;
+            margin-bottom: 6px;
+            background: linear-gradient(120deg, #ffffff 0%, #ffe9a3 40%, #00f3ff 100%);
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow:
+                0 0 10px rgba(0, 0, 0, 0.5),
+                0 0 18px rgba(0, 243, 255, 0.6);
         }
+        
+        /* 底下加一條光條 */
+        .main-title::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -6px;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0,243,255,0.8), transparent);
+            box-shadow: 0 0 8px rgba(0,243,255,0.8);
+        }
+
         .sub-title { font-size: 1rem; color: #ccc; letter-spacing: 1px; }
         .tagline {
             font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; color: var(--neon-blue);
@@ -681,61 +727,67 @@
             new TWEEN.Tween(controls.target).to({ x: pos.x, y: 0, z: pos.z }, 1500)
                 .easing(TWEEN.Easing.Cubic.Out).start();
         }
- 
+  
         function createParticlePath(tableId) {
-            const target = tableGroups[tableId];
-            if(!target) return;
-        
-            // 先把舊的路線與光球移除（這代表「重新導航」）
-            if(particlesMesh) {
-                scene.remove(particlesMesh);
-                particlesMesh = null;
-            }
-            if(navigatorMesh) {
-                scene.remove(navigatorMesh);
-                navigatorMesh = null;
-            }
-        
-            const curve = new THREE.CatmullRomCurve3([
-                entrancePos.clone(),
-                new THREE.Vector3(entrancePos.x, 20, entrancePos.z - 20),
-                new THREE.Vector3(target.group.position.x, 30, target.group.position.z + 10),
-                target.group.position.clone().add(new THREE.Vector3(0, 5, 0))
-            ]);
-        
-            // ✅ 原本的光點流動路徑
-            const count = 1500;
-            const geometry = new THREE.BufferGeometry();
-            const positions = [];
-            const colors = [];
-            const curvePoints = curve.getSpacedPoints(count);
-            curvePoints.forEach((p, i) => {
-                positions.push(p.x, p.y, p.z);
-                const col = new THREE.Color().setHSL(0.6 - (i/count)*0.5, 1, 0.5);
-                colors.push(col.r, col.g, col.b);
-            });
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            const material = new THREE.PointsMaterial({ 
-                size: 0.6, 
-                vertexColors: true, 
-                transparent: true, 
-                opacity: 0.8, 
-                blending: THREE.AdditiveBlending 
-            });
-            particlesMesh = new THREE.Points(geometry, material);
-            particlesMesh.userData = { curve: curve, count: count };
-            scene.add(particlesMesh);
-        
-            // ✅ 額外加一顆「導航光球」從入口一路飛到桌子
-            if (PATH_WITH_RUNNER) {
-                const sphereGeo = new THREE.SphereGeometry(1.0, 16, 16);
-                const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-                navigatorMesh = new THREE.Mesh(sphereGeo, sphereMat);
-                navigatorMesh.userData = { curve: curve };
-                scene.add(navigatorMesh);
-            }
+        const target = tableGroups[tableId];
+        if(!target) return;
+    
+        // 重新導航前，把舊的路線與光球清除
+        if(particlesMesh) {
+            scene.remove(particlesMesh);
+            particlesMesh = null;
         }
+        if(navigatorMesh) {
+            scene.remove(navigatorMesh);
+            navigatorMesh = null;
+        }
+    
+        const curve = new THREE.CatmullRomCurve3([
+            entrancePos.clone(),
+            new THREE.Vector3(entrancePos.x, 20, entrancePos.z - 20),
+            new THREE.Vector3(target.group.position.x, 30, target.group.position.z + 10),
+            target.group.position.clone().add(new THREE.Vector3(0, 5, 0))
+        ]);
+    
+        const count = 600; // 粒子點數，600~1000 都可以，看效能
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        const curvePoints = curve.getSpacedPoints(count);
+    
+        // 粒子固定在路線上
+        curvePoints.forEach((p, i) => {
+            positions.push(p.x, p.y, p.z);
+            // 先全部給比較暗的顏色，之後在 animate 裡動態調亮
+            const col = new THREE.Color().setHSL(0.58, 1, 0.2);
+            colors.push(col.r, col.g, col.b);
+        });
+    
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    
+        const material = new THREE.PointsMaterial({
+            size: 0.6,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+    
+        particlesMesh = new THREE.Points(geometry, material);
+        particlesMesh.userData = { curve: curve, count: count };
+        scene.add(particlesMesh);
+    
+        // 導航光球：沿著同一條 curve 跑
+        if (PATH_WITH_RUNNER) {
+            const sphereGeo = new THREE.SphereGeometry(1.0, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+            navigatorMesh = new THREE.Mesh(sphereGeo, sphereMat);
+            navigatorMesh.userData = { curve: curve };
+            scene.add(navigatorMesh);
+        }
+    }
+
 
         // --- UI 開關 ---
         function hideUI() {
@@ -763,24 +815,49 @@
                 t.text.lookAt(camera.position);
                 t.ring.rotation.z += 0.01;
             });
-
+ 
             if(particlesMesh) {
-                const positions = particlesMesh.geometry.attributes.position.array;
-                const curve = particlesMesh.userData.curve;
+                const colors = particlesMesh.geometry.attributes.color.array;
                 const count = particlesMesh.userData.count;
                 const time = Date.now() * 0.001;
-                for(let i=0; i<count; i++) {
-                    let t = (i/count + time*0.5) % 1;
-                    const p = curve.getPoint(t);
-                    positions[i*3] = p.x;
-                    positions[i*3+1] = p.y;
-                    positions[i*3+2] = p.z;
+            
+                // headT = 光球目前位置（0~1），trail = 亮的尾巴長度
+                const headT = (time * 0.12) % 1;  // 調整 0.12 可以改速度
+                const trail = 0.18;               // 0.1~0.25 可以試
+            
+                for (let i = 0; i < count; i++) {
+                    const ti = i / (count - 1);   // 這個點在曲線上的位置 (0~1)
+                    let d = (headT - ti + 1) % 1; // 簡單的環狀距離計算
+            
+                    // 已走過＋頭部：亮；還沒到：暗
+                    const isBright = (d >= 0 && d <= trail);
+                    const color = new THREE.Color().setHSL(
+                        0.58,               // 類似青藍色
+                        1.0,
+                        isBright ? 0.65 : 0.25
+                    );
+            
+                    const idx = i * 3;
+                    colors[idx]     = color.r;
+                    colors[idx + 1] = color.g;
+                    colors[idx + 2] = color.b;
                 }
-                particlesMesh.geometry.attributes.position.needsUpdate = true;
+            
+                particlesMesh.geometry.attributes.color.needsUpdate = true;
             }
+            
+            if (navigatorMesh && navigatorMesh.userData.curve) {
+                const curve = navigatorMesh.userData.curve;
+                const time = Date.now() * 0.001;
+                const t = (time * 0.12) % 1;  // 跟 headT 同一個速度就會「貼在亮頭」
+                const p = curve.getPoint(t);
+                navigatorMesh.position.copy(p);
+            }
+
             composer.render();
         }
     </script>
 </body>
 </html>
+
 
